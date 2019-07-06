@@ -116,11 +116,8 @@ public:
   // ....................................................................... //
   // simulation
   
-  void run_Metropolis (IsingStart IS );
-  void run_Metropolis (double p = NAN);
-  
-  void run_Wolff      (IsingStart IS );
-  void run_Wolff      (double p = NAN);
+  void run_Metropolis ();
+  void run_Wolff      ();
   
   void reset          (IsingStart IS );
   void reset          (double p = NAN);

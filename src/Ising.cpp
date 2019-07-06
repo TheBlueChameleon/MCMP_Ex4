@@ -39,15 +39,15 @@ void Ising::init(unsigned int L, double p) {
   // initialize with uniformly distributed spins, p(up) = p, p(down) = 1 - p.
   
   this->pStart = p;
-  this->V      = L;
+  this->L      = L;
   this->V      = L * L;
   
   this->gridpoints.resize(this->V);
-  this->neighbours.clear();
+  this->neighbours.resize(this->V);
   
   for (auto i=0u; i<V; i++) {
     auto theNeighbours = this->neighboursOf(arrayCoordinateX(i), arrayCoordinateY(i));
-    this->neighbours.emplace_back( theNeighbours.cbegin(), theNeighbours.cend() );
+    std::copy(theNeighbours.cbegin(), theNeighbours.cend(), std::back_inserter(this->neighbours[i]));
   }
   
   this->reset();      // sets initial spins according to pStart
@@ -96,7 +96,7 @@ inline std::array<unsigned int, 4> Ising::neighboursOf (const int x, const int y
   
 int Ising::flipEnergy(const int i) const {
 #if defined(ISING_DEBUG)
-  if (!between(i, 0, V)) {
+  if (!between(i, 0, this->V)) {
     hDebug << "flipEnergy: attempting to flip invalid index " << i << std::endl;
     return -1;
   }
@@ -112,7 +112,7 @@ int Ising::flipEnergy(const int i) const {
 // ----------------------------------------------------------------------- //
 int Ising::flip(const int i) {
 #if defined(ISING_DEBUG)
-  if (!between(i, 0, V)) {
+  if (!between(i, 0, this->V)) {
     hDebug << "flipEnergy: attempting to flip invalid index " << i << std::endl;
   }
 #endif
@@ -130,7 +130,7 @@ int    Ising::energy()        const {
   
   double reVal = 0;
   
-  for   (unsigned int i=0; i<V; i++) {
+  for   (unsigned int i=0; i<this->V; i++) {
     reVal -= this->gridpoints[i] * this->gridpoints[this->neighbours[i][0]];
     reVal -= this->gridpoints[i] * this->gridpoints[this->neighbours[i][1]];
   }
@@ -141,7 +141,7 @@ int    Ising::energy()        const {
 int    Ising::magnetization() const {
   int reVal = 0;
   
-  for (unsigned int i=0; i<V; i++) {
+  for (unsigned int i=0; i<this->V; i++) {
     reVal += this->gridpoints[i];
   }
   
@@ -170,9 +170,7 @@ void   Ising::setT(const double T, const double pStart) {
 // ========================================================================= //
 // simulation
 
-void Ising::run_Metropolis (IsingStart IS ) {this->run_Metropolis(IsingStartToP(IS));}
-// ....................................................................... //
-void Ising::run_Metropolis (double pStart) {
+void Ising::run_Metropolis () {
   int    idx;               // index of the grid point to be flipped
   int    deltaE, totalE;    // change in energy due to the flip about to be done; total energy
   int            totalM;    // same for magnetization
@@ -182,18 +180,18 @@ void Ising::run_Metropolis (double pStart) {
   std::cout << "running new Metropolis chain at T=" << this->T << " with p_up = " << pStart << std::endl;
 #endif
   
-  this->reset(pStart);
+  this->reset();
   
   totalE = this->energy();
   totalM = this->magnetization();
   
-  this->historyE.push_back(         static_cast<double>(totalE) / V) ;
-  this->historyM.push_back(std::abs(static_cast<double>(totalM) / V));
+  this->historyE.push_back(         static_cast<double>(totalE) / this->V) ;
+  this->historyM.push_back(std::abs(static_cast<double>(totalM) / this->V));
   
   
-  for   (auto i     = 0u;     i < N_MC;     i++) {
-    for (auto sweep = 0u; sweep < V   ; sweep++) {
-      idx = gsl_rng_uniform_int(RNG, V);
+  for   (auto i     = 0u;     i < N_MC   ;     i++) {
+    for (auto sweep = 0u; sweep < this->V; sweep++) {
+      idx = gsl_rng_uniform_int(RNG, this->V);
       deltaE = this->flipEnergy(idx);
       
       if (deltaE <= 0) {
@@ -211,8 +209,8 @@ void Ising::run_Metropolis (double pStart) {
       
     }
     
-    historyE.push_back(         static_cast<double>(totalE) / V) ;
-    historyM.push_back(std::abs(static_cast<double>(totalM) / V));
+    historyE.push_back(         static_cast<double>(totalE) / this->V) ;
+    historyM.push_back(std::abs(static_cast<double>(totalM) / this->V));
     
     
 #ifdef FEEDBACK_ONSCREEN
@@ -227,9 +225,7 @@ void Ising::run_Metropolis (double pStart) {
 #endif
 }
 // ----------------------------------------------------------------------- //
-void Ising::run_Wolff(IsingStart IS ) {this->run_Wolff(IsingStartToP(IS));}
-// ....................................................................... //
-void Ising::run_Wolff(double pStart) {
+void Ising::run_Wolff() {
   unsigned int idx;
   unsigned int cluster_ID = 0;
   int          seedspin;
@@ -250,7 +246,7 @@ void Ising::run_Wolff(double pStart) {
   for   (auto i = 0u; i < N_MC; i++) {
     cluster.clear();
     
-    idx = gsl_rng_uniform_int(RNG, V);
+    idx = gsl_rng_uniform_int(RNG, this->V);
     
     seedspin = this->gridpoints[idx];
     this->gridpoints[idx] *= -1;
