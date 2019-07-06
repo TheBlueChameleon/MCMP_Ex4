@@ -21,10 +21,9 @@
 // ------------------------------------------------------------------------- //
 // simulation behaviour
 
-const unsigned int L    = 64;         // system size
-const unsigned int V    = L*L;        // system volume
-const unsigned int N_MC = 20000;     // steps in the MC simulation
-const unsigned int N_EQ = N_MC/10;    // equilibration time
+// const unsigned int L    = 64;         // system size
+// const unsigned int V    = L*L;        // system volume
+// const unsigned int N_MC = 10000;     // steps in the MC simulation
 
 extern const double outerT_lo = 1.0;
 extern const double outerT_hi = 4.0;
@@ -38,7 +37,7 @@ extern const double innerT_dT = 0.02;
 // log behaviour
 
 const std::string   REPORT_DIR     = "./txtout/";
-const std::string   DEBUG_FILENAME = "MCMP_2_Debug.txt";
+const std::string   DEBUG_FILENAME = "MCMP_4_Debug.txt";
 
 std::ofstream hDebug(DEBUG_FILENAME);
 

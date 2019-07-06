@@ -10,6 +10,7 @@
 // dependencies
 
 #include <vector>
+#include <array>
 
 #include <cmath>
 #include <iostream>
@@ -36,11 +37,15 @@ private:
    * 
    */
   
+  unsigned int            L;
+  unsigned int            V;
+  unsigned int N_MC = 10000;
+  
   std::vector<int>                       gridpoints;
   std::vector<std::vector<unsigned int>> neighbours;
   
   double pStart = 0.0;
-  double T      = 0.1;
+  double T      = 1.0;
   double lookupExp[4];
   
   std::vector<double> historyE;
@@ -58,15 +63,28 @@ private:
   double valX   = NAN;
   double errX   = NAN;
   
-  void init (double p);
+  // ....................................................................... //
+  // private methods
+  
+  void init (unsigned int L, double p);             // sets up the neighbourhood relations
   
 public:
   // ....................................................................... //
   // CTor, DTor
   
-  Ising  (double T, IsingStart IS );
-  Ising  (double T, double p = 0.0);
+  Ising  (unsigned int L, IsingStart IS );
+  Ising  (unsigned int L, double p = 0.0);
   ~Ising ();
+  
+  // ....................................................................... //
+  // lattice geometry
+  
+  unsigned int arrayCoordinateX (const unsigned int idx) const;
+  unsigned int arrayCoordinateY (const unsigned int idx) const;
+  
+  unsigned int arrayIndex(const int x, const int y) const;
+  
+  std::array<unsigned int, 4> neighboursOf (const int x, const int y) const;
   
   // ....................................................................... //
   // lattice manipulation
@@ -93,16 +111,19 @@ public:
   // runtime parameters
   
   double getT() const;
-  void   setT(double T);
+  void   setT(const double T, const double pStart = NAN);
   
   // ....................................................................... //
   // simulation
   
-  void run  (IsingStart IS );
-  void run  (double p = 0.0);
+  void run_Metropolis (IsingStart IS );
+  void run_Metropolis (double p = NAN);
   
-  void reset(IsingStart IS );
-  void reset(double p = 0.0);
+  void run_Wolff      (IsingStart IS );
+  void run_Wolff      (double p = NAN);
+  
+  void reset          (IsingStart IS );
+  void reset          (double p = NAN);
   
   // ....................................................................... //
   // read results
@@ -130,9 +151,9 @@ public:
   // output
   
   void dumpGrid    (std::ostream & target = std::cout, std::string separator = "\t") const;
-  void dumpHistoryE(std::ostream & target = std::cout, std::string separator = "\t") const;
-  void dumpHistoryM(std::ostream & target = std::cout, std::string separator = "\t") const;
-  void dumpReport  (std::ostream & target = std::cout, std::string separator = "\t") const;
+//   void dumpHistoryE(std::ostream & target = std::cout, std::string separator = "\t") const;
+//   void dumpHistoryM(std::ostream & target = std::cout, std::string separator = "\t") const;
+//   void dumpReport  (std::ostream & target = std::cout, std::string separator = "\t") const;
 };
 
 #endif//ISING_HPP

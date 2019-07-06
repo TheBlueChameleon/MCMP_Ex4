@@ -78,7 +78,11 @@ double stdev( const std::vector<double> & data, const unsigned int from, unsigne
 double autocorrelationTime(std::vector<double> & data, unsigned int discard) {
   double reVal = 0.5;
   
-  for (auto rho : autocorrelationFunc(data, discard)) {reVal += rho;}
+  auto Rho = autocorrelationFunc(data, discard);
+  
+  if (Rho.size() == 0) {return NAN;}
+  
+  for (auto rho : Rho) {reVal += rho;}
   
   return reVal;
 }

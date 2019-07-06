@@ -19,32 +19,6 @@
 #include "Ising.hpp"
 
 // ========================================================================= //
-// private inline functions
-
-// translate 1D array index into 2D coordinates
-inline unsigned int arrayCoordinateX (unsigned int idx) {return idx % L;}
-inline unsigned int arrayCoordinateY (unsigned int idx) {return idx / L;}
-
-// translate 2D coordinates into 1D array index, incorporating periodic boundary conditions
-inline unsigned int arrayIndex(int x, int y) {
-  return 
-    (y >= static_cast<int>(L)  ?  y-L  :  (y < 0  ?  (L+y)  :  y)) * L + 
-    (x >= static_cast<int>(L)  ?  x-L  :  (x < 0  ?  (L+x)  :  x));
-}
-
-// get automatic list of nearest neighbours
-inline std::array<unsigned int, 4> neighboursOf (int x, int y) {
-  std::array<unsigned int, 4> reVal;
-  
-  reVal[0] = arrayIndex(x+1, y  );
-  reVal[1] = arrayIndex(x  , y+1);
-  reVal[2] = arrayIndex(x-1, y  );
-  reVal[3] = arrayIndex(x  , y-1);
-  
-  return reVal;
-}
-
-// ========================================================================= //
 // enum translator
 
 inline double IsingStartToP (IsingStart IS) {
@@ -61,30 +35,61 @@ inline double IsingStartToP (IsingStart IS) {
 // ========================================================================= //
 // CTor, DTor
 
-void Ising::init(double p) {
+void Ising::init(unsigned int L, double p) {
   // initialize with uniformly distributed spins, p(up) = p, p(down) = 1 - p.
   
-  this->gridpoints.clear();
+  this->pStart = p;
+  this->V      = L;
+  this->V      = L * L;
+  
+  this->gridpoints.resize(this->V);
   this->neighbours.clear();
   
   for (auto i=0u; i<V; i++) {
-    this->gridpoints.push_back(gsl_rng_uniform(RNG) > p  ?  -1  :  +1);
-    
-    auto theNeighbours = neighboursOf(arrayCoordinateX(i), arrayCoordinateY(i));
+    auto theNeighbours = this->neighboursOf(arrayCoordinateX(i), arrayCoordinateY(i));
     this->neighbours.emplace_back( theNeighbours.cbegin(), theNeighbours.cend() );
   }
+  
+  this->reset();      // sets initial spins according to pStart
 } 
 
 // ----------------------------------------------------------------------- //
 
-Ising::Ising  (double T, IsingStart IS) {this->setT(T); this->init(IsingStartToP(IS));}
+Ising::Ising  (unsigned int L, IsingStart IS) {this->init(L, IsingStartToP(IS));}
 // ....................................................................... //
-Ising::Ising  (double T, double p     ) {this->setT(T); this->init(p);}
+Ising::Ising  (unsigned int L, double pStart) {this->init(L, pStart           );}
 
 // ----------------------------------------------------------------------- //
 Ising::~Ising () {
   
 }
+
+// ========================================================================= //
+// lattice geometry
+
+// translate 1D array index into 2D coordinates
+inline unsigned int Ising::arrayCoordinateX (const unsigned int idx) const {return idx % this->L;}
+inline unsigned int Ising::arrayCoordinateY (const unsigned int idx) const {return idx / this->L;}
+
+// translate 2D coordinates into 1D array index, incorporating periodic boundary conditions
+inline unsigned int Ising::arrayIndex(const int x, const int y) const {
+  return 
+    (y >= static_cast<int>(this->L)  ?  y-this->L  :  (y < 0  ?  (this->L+y)  :  y)) * this->L + 
+    (x >= static_cast<int>(this->L)  ?  x-this->L  :  (x < 0  ?  (this->L+x)  :  x));
+}
+
+// get automatic list of nearest neighbours
+inline std::array<unsigned int, 4> Ising::neighboursOf (const int x, const int y) const {
+  std::array<unsigned int, 4> reVal;
+  
+  reVal[0] = this->arrayIndex(x+1, y  );
+  reVal[1] = this->arrayIndex(x  , y+1);
+  reVal[2] = this->arrayIndex(x-1, y  );
+  reVal[3] = this->arrayIndex(x  , y-1);
+  
+  return reVal;
+}
+
 
 // ========================================================================= //
 // lattice manipulation
@@ -152,8 +157,9 @@ double Ising::magnetizationDensity() const {return static_cast<double>(this->mag
 
 double Ising::getT() const {return this->T;}
 // ....................................................................... //
-void   Ising::setT(double T) {
-  this->reset();
+void   Ising::setT(const double T, const double pStart) {
+  this->reset(pStart);
+  
   this->T = T;
   
   for (auto i = 0u; i<4u; i++) {
@@ -164,16 +170,16 @@ void   Ising::setT(double T) {
 // ========================================================================= //
 // simulation
 
-void Ising::run (IsingStart IS ) {this->run(IsingStartToP(IS));}
+void Ising::run_Metropolis (IsingStart IS ) {this->run_Metropolis(IsingStartToP(IS));}
 // ....................................................................... //
-void Ising::run (double pStart) {
+void Ising::run_Metropolis (double pStart) {
   int    idx;               // index of the grid point to be flipped
   int    deltaE, totalE;    // change in energy due to the flip about to be done; total energy
   int            totalM;    // same for magnetization
   
 #ifdef FEEDBACK_ONSCREEN
   std::cout << MEDSEP;
-  std::cout << "running new chain at T=" << this->T << " with p_up = " << pStart << std::endl;
+  std::cout << "running new Metropolis chain at T=" << this->T << " with p_up = " << pStart << std::endl;
 #endif
   
   this->reset(pStart);
@@ -221,10 +227,77 @@ void Ising::run (double pStart) {
 #endif
 }
 // ----------------------------------------------------------------------- //
+void Ising::run_Wolff(IsingStart IS ) {this->run_Wolff(IsingStartToP(IS));}
+// ....................................................................... //
+void Ising::run_Wolff(double pStart) {
+  unsigned int idx;
+  unsigned int cluster_ID = 0;
+  int          seedspin;
+  double       probability_to_add = 1 - std::exp(-2.0 / this->T);
+  
+  std::vector<unsigned int> cluster;
+  
+#ifdef FEEDBACK_ONSCREEN
+  std::cout << MEDSEP;
+  std::cout << "running new Wolff chain at T=" << this->T << " with p_up = " << pStart << std::endl;
+#endif
+  
+  this->reset(pStart);
+  
+  this->historyE.push_back(this->energyDensity()) ;
+  this->historyM.push_back(this->magnetizationDensity());
+  
+  for   (auto i = 0u; i < N_MC; i++) {
+    cluster.clear();
+    
+    idx = gsl_rng_uniform_int(RNG, V);
+    
+    seedspin = this->gridpoints[idx];
+    this->gridpoints[idx] *= -1;
+    
+    cluster.push_back(idx);
+    cluster_ID = 0;
+    
+    do {
+      for (auto neighbour : this->neighbours[cluster[cluster_ID]]) {
+        if (this->gridpoints[neighbour] == seedspin) {
+          double randVal = gsl_rng_uniform(RNG);
+          
+          if (randVal < probability_to_add) {
+            this->gridpoints[neighbour] *= -1;
+            cluster.push_back(neighbour);
+          } 
+        }
+        
+      }
+      
+      cluster_ID++;
+    } while (cluster_ID < cluster.size());
+    
+    this->historyE.push_back(this->energyDensity()) ;
+    this->historyM.push_back(this->magnetizationDensity());
+    
+    
+#ifdef FEEDBACK_ONSCREEN
+    if (! (i% 1000)) {
+      std::cout << "." << std::flush;
+    }
+#endif
+  }
+  
+#ifdef FEEDBACK_ONSCREEN
+  std::cout << "done" << std::endl;
+#endif
+}
+// ----------------------------------------------------------------------- //
 void Ising::reset(IsingStart IS) {this->reset(IsingStartToP(IS));}
 // ....................................................................... //
 void Ising::reset(double p) {
-  this->init(p);
+  if (!std::isnan(p)) {this->pStart = p;}
+  
+  for (auto i=0u; i<this->V; i++) {
+    this->gridpoints[i] = (gsl_rng_uniform(RNG) < pStart  ?  +1  :  -1);
+  }
   
   this->historyE.clear();
   this->historyM.clear();
@@ -252,7 +325,10 @@ const std::vector<double> & Ising::getHistoryM() const {return this->historyM;}
 double Ising::getTauE () {
   if (std::isnan(this->tauE)) {
     this->tauE = autocorrelationTime(this->historyE);
+    if (std::isnan(this->tauE)) {return NAN;}
+    
     this->tauE = autocorrelationTime(this->historyE, 20 * this->tauE);
+    if (20 * this->tauE > this->historyE.size()) {this->tauE = NAN;}
   }
   
   return this->tauE;
@@ -261,7 +337,10 @@ double Ising::getTauE () {
 double Ising::getTauM () {
   if (std::isnan(this->tauM)) {
     this->tauM = autocorrelationTime(this->historyM);
+    if (std::isnan(this->tauM)) {return NAN;}
+    
     this->tauM = autocorrelationTime(this->historyM, 20 * this->tauM);
+    if (20 * this->tauM > this->historyM.size()) {this->tauM = NAN;}
   }
   
   return this->tauM;
