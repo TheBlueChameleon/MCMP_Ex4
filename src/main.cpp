@@ -5,7 +5,6 @@
 // ========================================================================= //
  
 #include <iostream>
-#include <iomanip>
 #include <fstream>
 #include <cmath>
 #include <vector>
@@ -24,120 +23,68 @@ int main () {
   DEBUG_LAUNCH;
   RNG_init();
   
+  const std::string filename = "./out/evolution.dat";
+  std::ofstream hf_evolution(filename);
+  
+  hf_evolution
+      << "# "
+      << "temperature T\t"
+      << "heat density e\terror on e\t" 
+      << "absolute magnetization density |m|\terror on m\t"
+      << "specific heat density c\terror on c\t"
+      << "magnetic susceptibility chi\terror on chi"
+      << std::endl;
+  
   // ----------------------------------------------------------------------- //
   // Metropolis-Hastings algorithm
   
-  PRINT_SEPARATOR;
+  std::cout << SEPARATOR;
   std::cout << "Setup with dimension L=" << L << std::endl;
   std::cout << "\t#Monte Carlo sweeps              : " << N_MC << std::endl;
-  std::cout << "\t#MC sweeps used for equilibration: " << N_EQ << std::endl;
   
-  double lookupExp[3];
-    /* we only need certain values exp(-i/T); however, by including exp(-0/T) 
-     * in the table, we can use the return value of Latice::flipEnergy() as 
-     * index of this C-array.
-     */
-  
-  int    idx;               // index of the grid point to be flipped
-  int    deltaE, totalE;    // change in energy due to the flip about to be done; total energy
-  int            totalM;    // same for magnetization
-  
-  std::vector<double> historyE, historyM;
   std::ofstream       hReport;
   std::string         nReport;
   
-  for   (auto T : {2.0, 2.3, 2.6}) {
-    // ..................................................................... //
-    // initialize system
+  double dT = outerT_dT;
+  Ising model(0.0, IsingStart::COLD);
+  
+  for (auto T = outerT_lo; T <= outerT_hi; T += dT) {
+    if (between(T, innerT_lo, innerT_hi)) {dT = innerT_dT;}
+    else                                  {dT = outerT_dT;}
     
-    PRINT_SEPARATOR;
-    std::cout << "initializing: T=" << T << std::endl;
+    model.setT(T);
+    model.run();
     
-    for (auto i=0; i<3; i++) {
-      lookupExp[i] = std::exp(-4.0*i/T);      // TODO: idx -> exp(??)
+    // file out
+    hf_evolution << T << "\t";
+    
+    if (std::isnan(model.getTauE()) || 
+        std::isnan(model.getTauM())
+    ) {
+      hf_evolution << "# --- insufficient data to compute meaningfull data ---" << std::endl;
+      continue;
     }
     
-    for (auto pStart : {0.0, 0.5, 0.75}) {
-      PRINT_MEDSEP;
-      std::cout << "initial probability for spin-up: pStart=" << pStart << std::endl;
-      
-      Ising grid = Ising(pStart);
-      
-      totalE = grid.energy();
-      totalM = grid.magnetization();
-      
-      historyE.clear();
-      historyM.clear();
-      
-      historyE.push_back(         static_cast<double>(totalE) / V) ;
-      historyM.push_back(std::abs(static_cast<double>(totalM) / V));
-      
-      nReport  = REPORT_DIR;
-      nReport += "Report_T=";
-      nReport += to_string_with_precision(     T, 1);
-      nReport += "_pStart=";
-      nReport += to_string_with_precision(pStart, 1);
-      nReport += ".txt";
-      
-      
-      // ..................................................................... //
-      // run MCMH
-      
-      for   (int i=0; i<N_MC; i++) {
-        for (int sweep=0; sweep<V; sweep++) {
-          idx = gsl_rng_uniform_int(RNG, V);
-          deltaE = grid.flipEnergy(idx);
-          
-          if (deltaE <= 0) {
-            totalM += grid.flip(idx);
-            totalE += deltaE;
-            
-          } else {
-            double randVal = gsl_rng_uniform(RNG);
-            
-            if (randVal < lookupExp[deltaE/4]) {
-              totalM += grid.flip(idx);
-              totalE += deltaE;
-            }
-          }
-          
-        }
-        
-        historyE.push_back(         static_cast<double>(totalE) / V) ;
-        historyM.push_back(std::abs(static_cast<double>(totalM) / V));
-        
-        if (! (i% 1000)) {
-          std::cout << "." << std::flush;
-        }
-      }
-      
-      std::cout << "done." << std::endl;
-      
-      std::cout << "\theat density                   : " <<             avg      (historyE, N_EQ)     << std::endl;
-      std::cout << "\tmagnetization density          : " <<             avg      (historyM, N_EQ)     << std::endl;
-      std::cout << "\tSpecific heat density          : " << (1/(T*T)) * variation(historyE, N_EQ) * V << std::endl; 
-      std::cout << "\tMagnetic susceptibility density: " << (1/  T  ) * variation(historyM, N_EQ) * V << std::endl;
-      
-      
-      // ..................................................................... //
-      // output to file
-      
-      hReport.open(nReport);
-      hReport << std::fixed << std::setprecision(5);
-      hReport << "# ID, energy density, magnetization density" << std::endl;
-      
-      for (auto i=0; i<N_MC; i++) {
-//          if (! (i% 10)) {        // reduce the number of plotted data points by factor %__
-          hReport << i << "\t" << historyE[i] << "\t" << historyM[i] << std::endl;
-//          }
-      }
-      
-      hReport.close();
-    }
+    hf_evolution << model.getValE() << "\t";
+    hf_evolution << model.getErrE() << "\t";
+    
+    hf_evolution << model.getValM() << "\t";
+    hf_evolution << model.getErrM() << "\t";
+    
+    hf_evolution << model.getValC() << "\t";
+    hf_evolution << model.getErrC() << "\t";
+    
+    hf_evolution << model.getValX() << "\t";
+    hf_evolution << model.getErrX();
+    hf_evolution << std::endl;
+    
+    std::cout << "post files" << std::endl;
   }
   
   // ----------------------------------------------------------------------- //
   // tidy up
+  
+  hf_evolution.close();
   
   std::cout << "done." << std::endl;
   DEBUG_END;

@@ -19,7 +19,7 @@
 // ========================================================================= //
 // direct statistical measures on a sample
 
-double avg( std::vector<double> & data, unsigned int from, unsigned int till ) {
+double avg( const std::vector<double> & data, const unsigned int from, unsigned int till ) {
   double sum = 0;
   
   if (from > data.size()) {return NAN;}
@@ -32,7 +32,7 @@ double avg( std::vector<double> & data, unsigned int from, unsigned int till ) {
   return sum / (till - from);
 }
 // ------------------------------------------------------------------------- //
-double variance ( std::vector<double> & data, unsigned int from, unsigned int till ) {
+double variance ( const std::vector<double> & data, const unsigned int from, unsigned int till ) {
   /*  note: this returns sigma^2
    *                         ____________________________
    *                    _.  / sum(i=1..N) (x_i - x_med)²
@@ -53,7 +53,7 @@ double variance ( std::vector<double> & data, unsigned int from, unsigned int ti
   return num /= ((till - from) - 1);
 }
 // ......................................................................... //
-double meanSquaredError ( std::vector<double> & data, unsigned int from, unsigned int till ) {
+double meanSquaredError ( const std::vector<double> & data, const unsigned int from, unsigned int till ) {
   // almost like variance, but with no bias compensation (divide by N, not by N-1)
   
   double med = avg(data, from, till),
@@ -66,15 +66,10 @@ double meanSquaredError ( std::vector<double> & data, unsigned int from, unsigne
     num += (data[i] - med) * (data[i] - med);
   }
   
-//   std::cout << "MSE mean      : " << med << std::endl;
-//   std::cout << "MSE sum       : " << num << std::endl;
-//   std::cout << "MSE divides by: " <<        till - from  << std::endl;
-//   std::cout << "MSE reval     : " << num / (till - from) << std::endl;
-  
   return num / (till - from);
 }
 // ------------------------------------------------------------------------- //
-double stdev( std::vector<double> & data, unsigned int from, unsigned int till ) {
+double stdev( const std::vector<double> & data, const unsigned int from, unsigned int till ) {
   return std::sqrt(variance(data, from, till));
 }
 // ========================================================================= //
@@ -91,39 +86,40 @@ double autocorrelationTime(std::vector<double> & data, unsigned int discard) {
 double autocorrelationTimeFromCovFunc( std::vector<double> & rhoFunc ) {
   double reVal = 0.5;
   
+  if (rhoFunc.size() == 0) {return NAN;}
+  
   for (auto rho : rhoFunc) {reVal += rho;}
   
   return reVal;
 }
 // ......................................................................... //
-std::vector<double> && autocorrelationFunc(std::vector<double> & data, unsigned int discard) {
+std::vector<double> autocorrelationFunc(std::vector<double> & data, unsigned int discard) {
   unsigned int N = data.size() - discard;
   
-  std::vector<double>                 // std::vector CTor has form (count, value) where count is #elements and value is assigned to all elements of the vector.
-    yPlus  (N, 0), yMinus(N, 0),
-    denom  (N, 0);
-  static std::vector<double>          // return a reference to this. ==> static lifetime.
-    autoCov;
-    autoCov.clear();
-    autoCov.resize(N, 0);             // static means CTor is invoked only once -- manually prepare initial state.
-  
-  
-  for   (unsigned int t=0; t<N  ; t++) {
-    denom[t] = 1.0 / (N - t);
-    
-    for (unsigned int i=0; i<N-t; i++) {
-      yMinus[t] += data[i  +discard];
-      yPlus [t] += data[i+t+discard];
-    }
-    
-    yMinus[t] *= denom[t];
-    yPlus [t] *= denom[t];
+  if (discard > data.size()) {
+    std::cerr << __func__ << ": attempting to compute on empty subset." << std::endl;
+    std::vector<double> dummy(0, 0);
+    return dummy;
   }
   
+  double              yPlus, yMinus, denom;
+  std::vector<double> autoCov(N, 0);
   
-  for   (unsigned int t=0; t<N  ; t++) {
+  for   (unsigned int t=1; t<N  ; t++) {
+    yMinus = 0;
+    yPlus  = 0;
+    denom  = 1.0 / (N - t);
+    
     for (unsigned int i=0; i<N-t; i++) {
-      autoCov[t] += (data[i+discard] - yMinus[t]) * (data[i+t+discard] - yPlus[t]);
+      yMinus += data[i  +discard];
+      yPlus  += data[i+t+discard];
+    }
+    
+    yMinus *= denom;
+    yPlus  *= denom;
+    
+    for (unsigned int i=0; i<N-t; i++) {
+      autoCov[t] += (data[i+discard] - yMinus) * (data[i+t+discard] - yPlus);
     }
     
     if (autoCov[t] < 0) {
@@ -131,13 +127,16 @@ std::vector<double> && autocorrelationFunc(std::vector<double> & data, unsigned 
       break;
     }
     
-    autoCov[t] *= denom[t];
+    autoCov[t] *= denom;
   }
   
-  double norm = autoCov[0];
-  for (auto & rho : autoCov) {rho /= norm;}
+  double norm = variance(data, discard);
   
-  return std::move(autoCov);
+  
+  for (auto & rho : autoCov) {rho /= norm;}
+  autoCov.erase(autoCov.cbegin());
+  
+  return autoCov;
 }
 // ------------------------------------------------------------------------- //
 double stderror ( std::vector<double> & data, double tau, double sigma ) {

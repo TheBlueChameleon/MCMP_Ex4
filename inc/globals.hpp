@@ -10,43 +10,27 @@
 // ========================================================================= //
 // dependencies
 
+#include <iostream>
+#include <string>
 #include <fstream>
+#include <sstream>
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 
 // ========================================================================= //
-// symbols
+// DEFINE symbols
+
+#define ISING_DEBUG
+#define FEEDBACK_ONSCREEN
 
 // ------------------------------------------------------------------------- //
-// simulation behaviour
-
-// system size
-#define L 64
-
-// system volume
-#define V (L*L)
-
-// steps in the MC simulation
-#define N_MC  100000
-
-// equilibration time
-#define N_EQ  10000
-
-#define REPORT_DIR "./txtout/"
-
-// ------------------------------------------------------------------------- //
-// meta behaviour
-#define DEBUG_FILENAME "MCMP_2_Debug.txt"
+// debug macros
 
 #define DEBUG_LAUNCH hDebug << "Running Simulation. Launch time: " << __TIME__ << std::endl << SEPARATOR
 #define DEBUG_END    hDebug << SEPARATOR << "Simulation ended in regular fashion. End time: " << __TIME__ << std::endl
 
 #define DEBUG_FLUSH  hDebug << std::flush
-
-#define ISING_DEBUG
-
-// #define FEEDBACK_ONSCREEN
 
 // ------------------------------------------------------------------------- //
 // output shorthands
@@ -54,18 +38,36 @@
 #define SMALLSEP  "// ......................................................................... //\n"
 #define MEDSEP    "// ------------------------------------------------------------------------- //\n"
 #define SEPARATOR "// ========================================================================= //\n"
-#define PRINT_SMALLSEP   std::cout << SMALLSEP
-#define PRINT_MEDSEP     std::cout << MEDSEP
-#define PRINT_SEPARATOR  std::cout << SEPARATOR
-
-#define FORMAT_INT    std::cout << std::showpos << std::fixed << std::setprecision(0)
-#define FORMAT_DOUBLE std::cout << std::showpos << std::fixed << std::setprecision(5)
-#define FORMAT_STD    std::cout << std::defaultfloat << std::setprecision(-1) << std::noshowpos
 
 // ========================================================================= //
 // global variables
 
-extern std::ofstream    hDebug;
+// ------------------------------------------------------------------------- //
+// simulation behaviour
+
+extern const unsigned int L;      // system size
+extern const unsigned int V;      // system volume
+extern const unsigned int N_MC;   // steps in the MC simulation
+extern const unsigned int N_EQ;   // equilibration time
+
+extern const double outerT_lo;
+extern const double outerT_hi;
+extern const double outerT_dT;
+
+extern const double innerT_lo;
+extern const double innerT_hi;
+extern const double innerT_dT;
+
+// ------------------------------------------------------------------------- //
+// log behaviour
+
+extern const std::string   REPORT_DIR;
+extern const std::string   DEBUG_FILENAME;
+extern       std::ofstream hDebug;
+
+// ------------------------------------------------------------------------- //
+// GSL RNG
+
 extern bool      RNG_initialized;
 extern gsl_rng * RNG;
 
@@ -74,19 +76,21 @@ extern gsl_rng * RNG;
 
 void RNG_init ();
 
-#include <sstream>
-
 // ========================================================================= //
 // template procs
 
 template <typename T>
-std::string to_string_with_precision(const T a_value, const int n = 6)
-{
+std::string to_string_with_precision(const T a_value, const int n = 6) {
     std::ostringstream out;
     out.precision(n);
     out << std::fixed << a_value;
     return out.str();
 }
+
+// ------------------------------------------------------------------------- //
+
+// test whether x is between lo and hi
+inline bool between(const double x, const double lo, const double hi) {return (x >= lo)  ?  ((x <= hi) ? true : false) : false;}
 
 #endif//GLOBALS_HPP
 

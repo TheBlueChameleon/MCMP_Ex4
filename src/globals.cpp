@@ -5,8 +5,10 @@
 // ========================================================================= //
 // dependencies
 
-#include <fstream>
+#include <iostream>
 #include <ctime>
+#include <string>
+#include <fstream>
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -14,15 +16,41 @@
 #include "globals.hpp"
 
 // ========================================================================= //
-// debug
+// global variables
+
+// ------------------------------------------------------------------------- //
+// simulation behaviour
+
+const unsigned int L    = 64;         // system size
+const unsigned int V    = L*L;        // system volume
+const unsigned int N_MC = 20000;     // steps in the MC simulation
+const unsigned int N_EQ = N_MC/10;    // equilibration time
+
+extern const double outerT_lo = 1.0;
+extern const double outerT_hi = 4.0;
+extern const double outerT_dT = 0.1;
+
+extern const double innerT_lo = 2.1;
+extern const double innerT_hi = 2.4;
+extern const double innerT_dT = 0.02;
+
+// ------------------------------------------------------------------------- //
+// log behaviour
+
+const std::string   REPORT_DIR     = "./txtout/";
+const std::string   DEBUG_FILENAME = "MCMP_2_Debug.txt";
 
 std::ofstream hDebug(DEBUG_FILENAME);
 
-// ========================================================================= //
+// ------------------------------------------------------------------------- //
 // GSL RNG
 
 bool      RNG_initialized = false;
 gsl_rng * RNG;
+
+
+// ========================================================================= //
+// proc
 
 void RNG_quit ();
 
