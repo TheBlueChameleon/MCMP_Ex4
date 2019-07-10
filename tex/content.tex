@@ -1,0 +1,81 @@
+\chapter{Approach}
+Starting from the Code from last project (\emph{Ising Model 2}), I moved code sections into the class \texttt{Ising}, namely the principal part of the former \texttt{main} routine. Likewise, the variables \texttt{historyE}, \texttt{historyM}, \texttt{tauE}, \texttt{tauM}, \ldots that formerly were scoped in the \texttt{main} routine are now members of the class \texttt{Ising}.
+
+Further I added a routine that resets the grid and the class members representing results to be able to run multiple simulations in succession on the same data object. This routine is also being called by the constructor of the class \texttt{Ising}.
+
+The routines computing primary and secondary quantities take into account the autocorrelation times \texttt{tauE} and \texttt{tauM}. In order not to compute these values several times over, I implemented methods that return a stored class member unless it holds a NAN, representing an uninitialized state. As in  project \emph{Ising Model 2}, a first estimate of the autocorrelation times is computed based on the full Markov chains, and then recomputed in a refined manner by omitting the first $20 \tau_E$ values (or $20 \tau_M$, respectively).
+
+These changes gave rise to a routine \texttt{runMetropolis} that computes Markov chain elements for energy density and magnetization on the grid and stores them in the class members \texttt{historyE} and \texttt{historyM}, respectively. This method also calls the \texttt{reset} method to make sure a valid initial state is provided. 
+
+A method \texttt{setT} can be used to prepare a valid initial configuration of the grid and the lookup table for the exponential function. With these, the main module only comprises the construction of the object \texttt{Ising model}, a loop over the temperatures, subsequent calls to \texttt{model.setT} and \texttt{model.runMetropolis} as well as some lines that write these results to report files.
+
+Following this structure I also added a method \texttt{runWolff} which implements the cluster algorithm. Like its functionally similar cousin \texttt{runMetropolis}, the method calls \texttt{reset} and adds the initial energy density and magnetization density as first Markov chain elements. A local variable \texttt{probability\_to\_add} is used to spare recomputing the exponential.
+
+In the method, a local variable \mintinline{c++}{std::vector<unsigned int> cluster} is used to store the site IDs of the already found members of the cluster. As pushing values into a \mintinline{c++}{std::vector} might invalidate iterators, a helper index variable \texttt{clusterID} was used to denote the site whose neighbours are currently considered to be added to the cluster. This allows to formulate the termination condition for the cluster construction as \mintinline{c++}{do ... while (clusterID < cluster.size())}. Alternatively, the cluster could also be represented as a \mintinline{c++}{std::deque} (doubly linked list) which does not invalidate iterators upon insertations.
+
+The average cluster size density after building \texttt{N\_MC} Markov chains is reported in a class member accessible through a getter method. The same holds for the error, which is computed as the standard error of a vector of cluster size densities, holding the value for one markov chain element.
+
+Where error estimates are given, I used the standard error method on primary quantities and the bootstrap method on secondary quantities.
+
+\chapter{results}
+\section{Energy Density}
+As expected, the energy density in the regarded temperature range $T \in [1, 4]$ describes an S-shape with a its steepest slope at the critical temperature $T_C \approx 2.3$. The results obtained from the Metropolis- and Wolff-Algorithm are in near perfect alignment with miniscule errors, as was already found in the project \emph{Ising Model 2}. The plots for both algorithms can be found in figure \ref{fig:evsT}.
+
+\begin{figure}
+	\includegraphics[width=\linewidth, page=1]{./gfx/results}
+	\caption%
+{Energy density $e$ vs. temperature $T$ as obtained from the Metropolis- and Wolff-Algorithm}
+\label{fig:evsT}
+\end{figure}
+
+\section{Magnetization Density}
+Similar to energy density, magnetization describes a \emph{declining} S-shape. The phase transition around the critical temperature is much more pronounced, \ie the slope is much steeper there. Again, Wolff- and Metropolis-Algorithm are in near-perfect alignment. 
+
+See figure \ref{fig:evsM} for the plot.
+
+\begin{figure}
+	\includegraphics[width=\linewidth, page=2]{./gfx/results}
+	\caption%
+{Magnetization density $m$ vs. temperature $T$ as obtained from the Metropolis- and Wolff-Algorithm}
+\label{fig:evsM}
+\end{figure}
+
+\section{Specific Heat Density}
+As was to be expected from the shape of the energy density plot, specific heat density starts out at zero, approaches a singularity in the critical temperature and then drops asymptotically to a finite heat capacity. Far from the critical temperature, both algorithms yield near-identical results. Close to the phase transition, the Wolff-Algorithm shows superior performance, \ie smaller error margins.
+
+Since the error margins on obtained from the Wolff algorithm are reasonably narrow, a suitable estimate for the critical temperature can be obtained from
+
+\[ T_C = \text{argmax}_T (c_{Wolff}(T)) = 2.28 \]
+
+See figure \ref{fig:evsC} for the plot.
+
+\begin{figure}
+	\includegraphics[width=\linewidth, page=3]{./gfx/results}
+	\caption%
+{Specific heat density $c$ vs. temperature $T$ as obtained from the Metropolis- and Wolff-Algorithm}
+\label{fig:evsC}
+\end{figure}
+
+\section{Magnetic Susceptibility Density}
+Again the statements that were made wrt. specific heat density also hold for the magnetization analogon, albeit more pronounced. In particular, the data point gained for $T=2.26$ for the Metropolis algorithm ($\chi = 68.2731, \sigma_\chi = 22.3053$) has an error margin of 32\%. The data points obtained from the Wolff algorithm, on the other hand, barely exceed a 2\% error margin.
+
+See figure \ref{fig:evsX} for the plot.
+
+\begin{figure}
+	\includegraphics[width=\linewidth, page=4]{./gfx/results}
+	\caption%
+{Magnetic susceptibility density $\chi$ vs. temperature $T$ as obtained from the Metropolis- and Wolff-Algorithm}
+\label{fig:evsX}
+\end{figure}
+
+\section{Cluster Size Density}
+The cluster size density follows a declining S-Shape with its steepest descent at the phase transition. In the cold temperature limit, the entire grid is considered part of the cluster ($L \rightarrow 1$), while in the hot temperature limit, the Wolff algorithm mostly causes single spin flips ($L \rightarrow \smallfrac{1}{V}$). Errors on this measure are miniscule, regardless of temperature.
+
+See figure \ref{fig:evsL} for the plot.
+
+\begin{figure}
+	\includegraphics[width=\linewidth, page=5]{./gfx/results}
+	\caption%
+{Cluster length density $L$ vs. temperature $T$ for the Wolff-Algorithm}
+\label{fig:evsL}
+\end{figure}
