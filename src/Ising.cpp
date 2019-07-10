@@ -228,11 +228,11 @@ void Ising::run_Metropolis () {
 void Ising::run_Wolff() {
   unsigned int idx;
   unsigned int cluster_ID = 0;
-  unsigned int clusterSize = 0;
   int          seedspin;
   double       probability_to_add = 1 - std::exp(-2.0 / this->T);
   
   std::vector<unsigned int> cluster;
+  std::vector<double      > lengths;
   
 #ifdef FEEDBACK_ONSCREEN
   std::cout << MEDSEP;
@@ -271,7 +271,7 @@ void Ising::run_Wolff() {
       cluster_ID++;
     } while (cluster_ID < cluster.size());
     
-    clusterSize += cluster.size();
+    lengths.push_back(static_cast<double>(cluster.size()) / this->V);
     
     this->historyE.push_back(         this->energyDensity()        ) ;
     this->historyM.push_back(std::abs(this->magnetizationDensity()));
@@ -284,7 +284,8 @@ void Ising::run_Wolff() {
 #endif
   }
   
-  this->cLen = static_cast<double>(clusterSize) / N_MC;
+  this->cLen = avg(lengths);
+  this->cErr = stderror(lengths);
   
 #ifdef FEEDBACK_ONSCREEN
   std::cout << "done" << std::endl;
@@ -399,9 +400,9 @@ double Ising::getErrX () {
   return this->errX;
 }
 // ----------------------------------------------------------------------- //
-double Ising::getCLen () const {
-  return this->cLen;
-}
+double Ising::getCLen () const {return this->cLen;}
+// ....................................................................... //
+double Ising::getCErr () const {return this->cErr;}
 // ========================================================================= //
 // visualize
 

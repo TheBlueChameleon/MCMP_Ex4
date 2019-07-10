@@ -64,6 +64,7 @@ private:
   double errX   = NAN;
   
   double cLen   = NAN;
+  double cErr   = NAN;
   
   // ....................................................................... //
   // private methods
@@ -146,6 +147,7 @@ public:
   double getErrX          ();    // implements bootstrap
   
   double getCLen () const;
+  double getCErr () const;
   
   // ....................................................................... //
   // output

@@ -25,7 +25,7 @@ double meanSquaredError ( const std::vector<double> & data, const unsigned int f
 std::vector<double> autocorrelationFunc           (std::vector<double> & data, unsigned int discard = 0);
 double              autocorrelationTime           (std::vector<double> & data, unsigned int discard = 0);
 double              autocorrelationTimeFromCovFunc(std::vector<double> & rhoFunc);
-double stderror                                      (std::vector<double> & data, double tau = NAN, double sigma = NAN);
+double              stderror                      (std::vector<double> & data, double tau = NAN, double sigma = NAN);
   // computes the standard error given pre-computed autocorrelation time tau and standard deviation sigma.
   // if these two are NAN, the missing parameters are recomputed based on the content of data.
 

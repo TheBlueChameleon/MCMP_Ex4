@@ -17,7 +17,7 @@
 // ========================================================================= //
 // switches
 
-#define RUN_METROPOLIS
+// #define RUN_METROPOLIS
 #define RUN_WOLFF
 
 // ========================================================================= //
@@ -37,6 +37,7 @@ int main () {
   
   const unsigned int L = 64;
   
+  // file headers
 #ifdef RUN_METROPOLIS
   fh_Metropolis
       << "# "
@@ -60,11 +61,11 @@ int main () {
       << std::endl;
 #endif
   
-  // ----------------------------------------------------------------------- //
-  // Metropolis-Hastings algorithm
-  
   std::cout << SEPARATOR;
   std::cout << "Setup with dimension L=" << L << std::endl;
+  
+  // ----------------------------------------------------------------------- //
+  // action
   
   double dT = outerT_dT;
   Ising model(L, IsingStart::COLD);
@@ -115,6 +116,7 @@ int main () {
     
     std::cout << "computing primary and secondary quantities and their errors..." << std::flush;
     
+    
     // file out
     fh_Wolff << T << "\t";
     
@@ -137,7 +139,8 @@ int main () {
     fh_Wolff << model.getValX() << "\t";
     fh_Wolff << model.getErrX() << "\t";
     
-    fh_Wolff << model.getCLen();
+    fh_Wolff << model.getCLen() << "\t";
+    fh_Wolff << model.getCErr()        ;
     
     fh_Wolff << std::endl;
     
