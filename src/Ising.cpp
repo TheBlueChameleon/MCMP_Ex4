@@ -228,6 +228,7 @@ void Ising::run_Metropolis () {
 void Ising::run_Wolff() {
   unsigned int idx;
   unsigned int cluster_ID = 0;
+  unsigned int clusterSize = 0;
   int          seedspin;
   double       probability_to_add = 1 - std::exp(-2.0 / this->T);
   
@@ -270,8 +271,10 @@ void Ising::run_Wolff() {
       cluster_ID++;
     } while (cluster_ID < cluster.size());
     
-    this->historyE.push_back(this->energyDensity()) ;
-    this->historyM.push_back(this->magnetizationDensity());
+    clusterSize += cluster.size();
+    
+    this->historyE.push_back(         this->energyDensity()        ) ;
+    this->historyM.push_back(std::abs(this->magnetizationDensity()));
     
     
 #ifdef FEEDBACK_ONSCREEN
@@ -280,6 +283,8 @@ void Ising::run_Wolff() {
     }
 #endif
   }
+  
+  this->cLen = static_cast<double>(clusterSize) / N_MC;
   
 #ifdef FEEDBACK_ONSCREEN
   std::cout << "done" << std::endl;
@@ -377,7 +382,7 @@ double Ising::getErrC () {
   if (std::isnan(this->errC)) {
     this->errC = bootstrap_variance_error  (this->historyE, V / (T*T), 20 * this->tauE, this->tauE);
   }
-  return this->valC;
+  return this->errC;
 }
 // ----------------------------------------------------------------------- //
 double Ising::getValX () {
@@ -391,7 +396,11 @@ double Ising::getErrX () {
   if (std::isnan(this->errX)) {
     this->errX = bootstrap_variance_error  (this->historyM, V / T, 20 * this->tauM, this->tauM);
   }
-  return this->valC;
+  return this->errX;
+}
+// ----------------------------------------------------------------------- //
+double Ising::getCLen () const {
+  return this->cLen;
 }
 // ========================================================================= //
 // visualize

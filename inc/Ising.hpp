@@ -37,9 +37,9 @@ private:
    * 
    */
   
-  unsigned int            L;
-  unsigned int            V;
-  unsigned int N_MC = 10000;
+  unsigned int             L;
+  unsigned int             V;
+  unsigned int N_MC = 100000;
   
   std::vector<int>                       gridpoints;
   std::vector<std::vector<unsigned int>> neighbours;
@@ -62,6 +62,8 @@ private:
   double errM   = NAN;
   double valX   = NAN;
   double errX   = NAN;
+  
+  double cLen   = NAN;
   
   // ....................................................................... //
   // private methods
@@ -143,6 +145,7 @@ public:
   double getValX          ();
   double getErrX          ();    // implements bootstrap
   
+  double getCLen () const;
   
   // ....................................................................... //
   // output

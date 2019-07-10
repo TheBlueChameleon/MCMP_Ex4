@@ -17,7 +17,7 @@
 // ========================================================================= //
 // switches
 
-// #define RUN_METROPOLIS
+#define RUN_METROPOLIS
 #define RUN_WOLFF
 
 // ========================================================================= //
@@ -44,8 +44,7 @@ int main () {
       << "heat density e\terror on e\t" 
       << "absolute magnetization density |m|\terror on m\t"
       << "specific heat density c\terror on c\t"
-      << "magnetic susceptibility chi\terror on chi\t"
-      << "average cluster size"
+      << "magnetic susceptibility chi\terror on chi"
       << std::endl;
 #endif
   
@@ -56,7 +55,8 @@ int main () {
       << "heat density e\terror on e\t" 
       << "absolute magnetization density |m|\terror on m\t"
       << "specific heat density c\terror on c\t"
-      << "magnetic susceptibility chi\terror on chi"
+      << "magnetic susceptibility chi\terror on chi\t"
+      << "average cluster size"
       << std::endl;
 #endif
   
@@ -99,7 +99,8 @@ int main () {
     fh_Metropolis << model.getErrC() << "\t";
     
     fh_Metropolis << model.getValX() << "\t";
-    fh_Metropolis << model.getErrX();
+    fh_Metropolis << model.getErrX() << "\t";
+    
     fh_Metropolis << std::endl;
     
     
@@ -124,10 +125,6 @@ int main () {
       goto skipPointWolff;
     }
     
-    std::cout << std::endl;
-    std::cout << "tau_E: " << model.getTauE() << std::endl;
-    std::cout << "tau_M: " << model.getTauM() << std::endl;
-    
     fh_Wolff << model.getValE() << "\t";
     fh_Wolff << model.getErrE() << "\t";
     
@@ -138,7 +135,10 @@ int main () {
     fh_Wolff << model.getErrC() << "\t";
     
     fh_Wolff << model.getValX() << "\t";
-    fh_Wolff << model.getErrX();
+    fh_Wolff << model.getErrX() << "\t";
+    
+    fh_Wolff << model.getCLen();
+    
     fh_Wolff << std::endl;
     
     skipPointWolff:

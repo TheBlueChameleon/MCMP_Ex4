@@ -45,10 +45,6 @@
 // ------------------------------------------------------------------------- //
 // simulation behaviour
 
-// extern const unsigned int L;      // system size
-// extern const unsigned int V;      // system volume
-// extern const unsigned int N_MC;   // steps in the MC simulation
-
 extern const double outerT_lo;
 extern const double outerT_hi;
 extern const double outerT_dT;
